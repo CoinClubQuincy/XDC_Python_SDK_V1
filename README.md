@@ -40,7 +40,7 @@ Returns the current client version.
 
 **Parameters**
 
-**form** =  "Text"  for vatiabble output as string | Default output "JSON"
+**form** =  "Text"  for varriabled output as string | Default output "JSON"
 
 **Returns**
 
