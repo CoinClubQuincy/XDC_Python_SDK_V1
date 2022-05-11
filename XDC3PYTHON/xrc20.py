@@ -3,89 +3,90 @@ from web3._utils.encoding import (
     hexstr_if_str,
     to_bytes,
 )
-from decouple import config
-import json
 
+# xrc20 abi.json
+xrc20abi = "[{\"constant\":true,\"inputs\":[],\"name\":\"name\",\"outputs\":[{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_spender\",\"type\":\"address\"},{\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"approve\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"totalSupply\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_from\",\"type\":\"address\"},{\"name\":\"_to\",\"type\":\"address\"},{\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"transferFrom\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"decimals\",\"outputs\":[{\"name\":\"\",\"type\":\"uint8\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_owner\",\"type\":\"address\"}],\"name\":\"balanceOf\",\"outputs\":[{\"name\":\"balance\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"symbol\",\"outputs\":[{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_to\",\"type\":\"address\"},{\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"transfer\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_owner\",\"type\":\"address\"},{\"name\":\"_spender\",\"type\":\"address\"}],\"name\":\"allowance\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"fallback\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"spender\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"Approval\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"to\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"Transfer\",\"type\":\"event\"}]"
 
-rpcUrl = config('NETWORK_URL')
-
-# HTTPProvider:
-w3 = Web3(Web3.HTTPProvider(rpcUrl))
-
-# path of abi file
-with open('./common/xrc20abi.json') as abiJson:
-    xrc20abi = json.load(abiJson)
 
 # This is a class which consists all the methods as per XRC20 standards.
 
 class XRC20:
 
+    def __init__(self,rpcUrl):
+        self.rpcUrl = rpcUrl
+
+    # connection to network.
+
+    def getConnection(self):
+        w3 = Web3(Web3.HTTPProvider(self.rpcUrl))
+        return w3
+    
+    # get contract Instance.
+
+    def getContractInstance(self, tokenAddr):
+        contractInstance = self.getConnection().eth.contract(address=tokenAddr, abi=xrc20abi)
+        return contractInstance
+
     # Gets the Name of the specified address.
     # Token address is required as argument.
 
-    def name(tokenAddr):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc20abi)
-        name = contractInstance.functions.name().call()
+    def name(self, tokenAddr):
+        name = self.getContractInstance(tokenAddr).functions.name().call()
         return name
 
     # Gets method returns total supply of token.
     # Token address is required as argument.
 
-    def totalSupply(tokenAddr):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc20abi)
-        totalSupply = contractInstance.functions.totalSupply().call()
-        totalSupply = w3.fromWei(totalSupply, 'ether')
+    def totalSupply(self, tokenAddr):
+        totalSupply = self.getContractInstance(tokenAddr).functions.totalSupply().call()
+        totalSupply = self.getConnection().fromWei(totalSupply, 'ether')
         return totalSupply
 
     # Gets the Decimal of the specified address.
     # Token address is required as argument.
 
-    def decimal(tokenAddr):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc20abi)
-        decimal = contractInstance.functions.decimals().call()
+    def decimal(self, tokenAddr):
+        decimal = self.getContractInstance(tokenAddr).functions.decimals().call()
         return decimal
 
     # Gets the Symbol of the specified address.
     # Token address is required as argument.
 
-    def symbol(tokenAddr):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc20abi)
-        symbol = contractInstance.functions.symbol().call()
+    def symbol(self, tokenAddr):
+        symbol = self.getContractInstance(tokenAddr).functions.symbol().call()
         return symbol
 
     # Gets the balance of the specified address.
     # token address, owner address are required as arguments.
 
-    def balanceOf(tokenAddr, ownerAddress):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc20abi)
+    def balanceOf(self, tokenAddr, ownerAddress):
         owner = Web3.toChecksumAddress(ownerAddress)
-        balance = contractInstance.functions.balanceOf(owner).call()
-        return w3.fromWei(balance, 'ether')
+        balance = self.getContractInstance(tokenAddr).functions.balanceOf(owner).call()
+        return self.getConnection().fromWei(balance, 'ether')
 
     # This method returns how much allowance spender have from owner.
     # This function required three arguments.
     # owner address, spender address, token address.
 
-    def allowance(tokenAddr, ownerAddress, spenderAddress):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc20abi)
+    def allowance(self, tokenAddr, ownerAddress, spenderAddress):
         owner = Web3.toChecksumAddress(ownerAddress)
         spender = Web3.toChecksumAddress(spenderAddress)
-        Allowance = contractInstance.functions.allowance(owner, spender).call()
-        return w3.fromWei(Allowance, 'ether')
+        Allowance = self.getContractInstance(tokenAddr).functions.allowance(owner, spender).call()
+        return self.getConnection().fromWei(Allowance, 'ether')
 
     # Transfer XDC for a specified address.
     # This function requires following arguments.
     # private key, recipient address, amount.
 
-    def transferXDC(ownerAddress, receiverAddress, ownerPrivateKey, amount):
+    def transferXDC(self, ownerAddress, receiverAddress, ownerPrivateKey, amount):
 
         owner = Web3.toChecksumAddress(ownerAddress)
         spender = Web3.toChecksumAddress(receiverAddress)
-        amount = w3.toWei(amount, 'ether')
+        amount = self.getConnection().toWei(amount, 'ether')
 
-        nonce = w3.eth.getTransactionCount(owner)
-        gasPrice = w3.eth.gas_price
-        estimateGas = w3.eth.estimateGas({
+        nonce = self.getConnection().eth.getTransactionCount(owner)
+        gasPrice = self.getConnection().eth.gas_price
+        estimateGas = self.getConnection().eth.estimateGas({
             'to': spender,
             'from': owner,
             'value': amount
@@ -99,30 +100,28 @@ class XRC20:
             'gasPrice': gasPrice,
         }
 
-        signedTx = w3.eth.account.signTransaction(tx, ownerPrivateKey)
+        signedTx = self.getConnection().eth.account.signTransaction(tx, ownerPrivateKey)
 
-        txHash = w3.eth.sendRawTransaction(signedTx.rawTransaction)
-        return w3.toHex(txHash)
+        txHash = self.getConnection().eth.sendRawTransaction(signedTx.rawTransaction)
+        return self.getConnection().toHex(txHash)
 
     # Transfer token for a specified address.
     # This function requires following arguments.
     # ownerAddress, ownerPrivateKey, receiver address, token address, amount.
 
-    def transferToken(tokenAddr, ownerAddress, ownerPrivateKey,  receiverAddress, amount):
-
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc20abi)
+    def transferToken(self, tokenAddr, ownerAddress, ownerPrivateKey,  receiverAddress, amount):
 
         owner = Web3.toChecksumAddress(ownerAddress)
         spender = Web3.toChecksumAddress(receiverAddress)
 
-        balance = contractInstance.functions.balanceOf(owner).call()
+        balance = self.balanceOf(tokenAddr,owner)
 
         if amount > balance:
             return "amount exceeds balance"
 
-        amount = w3.toWei(amount, 'ether')
+        amount = self.getConnection().toWei(amount, 'ether')
 
-        Transfer = contractInstance.functions.transfer(spender, amount)
+        Transfer =  self.getContractInstance(tokenAddr).functions.transfer(spender, amount)
 
         hexData = Transfer._encode_transaction_data()
 
@@ -134,8 +133,8 @@ class XRC20:
             }
         )
 
-        nonce = w3.eth.getTransactionCount(owner)
-        gasPrice = w3.eth.gas_price
+        nonce = self.getConnection().eth.getTransactionCount(owner)
+        gasPrice = self.getConnection().eth.gas_price
 
         tx = {
             'nonce': nonce,
@@ -145,31 +144,29 @@ class XRC20:
             'gasPrice': gasPrice,
         }
 
-        signedTx = w3.eth.account.signTransaction(tx, ownerPrivateKey)
+        signedTx = self.getConnection().eth.account.signTransaction(tx, ownerPrivateKey)
 
-        txHash = w3.eth.sendRawTransaction(signedTx.rawTransaction)
-        return w3.toHex(txHash)
+        txHash = self.getConnection().eth.sendRawTransaction(signedTx.rawTransaction)
+        return self.getConnection().toHex(txHash)
 
     # Approve the passed address to spend the specified amount of tokens on behalf of owner.
     # This function required arguments.
     # ownerAddress, ownerPrivateKey, spenderAddress, tokenAddr, amount.
 
-    def approve(tokenAddr, ownerAddress, ownerPrivateKey,  spenderAddress, amount):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc20abi)
+    def approve(self, tokenAddr, ownerAddress, ownerPrivateKey,  spenderAddress, amount):
 
         owner = Web3.toChecksumAddress(ownerAddress)
         spender = Web3.toChecksumAddress(spenderAddress)
 
-        balance = contractInstance.functions.balanceOf(owner).call()
-        allowanceAmount = contractInstance.functions.allowance(
-            owner, spender).call()
+        balance = self.balanceOf(tokenAddr, owner)
+        allowanceAmount = self.allowance(tokenAddr, owner, spender)
 
         if amount > balance and allowanceAmount > balance:
             return "amount exceeds balance"
 
-        amount = w3.toWei(amount, 'ether')
+        amount = self.getConnection().toWei(amount, 'ether')
 
-        approveData = contractInstance.functions.approve(spender, amount)
+        approveData =  self.getContractInstance(tokenAddr).functions.approve(spender, amount)
 
         hexData = approveData._encode_transaction_data()
 
@@ -177,9 +174,9 @@ class XRC20:
 
         estimateGas = approveData.estimateGas()
 
-        nonce = w3.eth.getTransactionCount(owner)
+        nonce = self.getConnection().eth.getTransactionCount(owner)
 
-        gasPrice = w3.eth.gas_price
+        gasPrice = self.getConnection().eth.gas_price
 
         tx = {
             'nonce': nonce,
@@ -189,37 +186,35 @@ class XRC20:
             'gasPrice': gasPrice,
         }
 
-        signedTx = w3.eth.account.signTransaction(tx, ownerPrivateKey)
+        signedTx = self.getConnection().eth.account.signTransaction(tx, ownerPrivateKey)
 
-        txHash = w3.eth.sendRawTransaction(signedTx.rawTransaction)
-        return w3.toHex(txHash)
+        txHash = self.getConnection().eth.sendRawTransaction(signedTx.rawTransaction)
+        return self.getConnection().toHex(txHash)
 
     # increase the amount of tokens that an owner allowed to a spender.
     # This function required arguments.
     # owner address, ownerPrivateKey, spender address, token address, amount.
 
-    def increaseAllowance(tokenAddr, ownerAddress, ownerPrivateKey,  spenderAddress, amount):
+    def increaseAllowance(self, tokenAddr, ownerAddress, ownerPrivateKey,  spenderAddress, amount):
 
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc20abi)
 
         owner = Web3.toChecksumAddress(ownerAddress)
         spender = Web3.toChecksumAddress(spenderAddress)
 
-        balance = contractInstance.functions.balanceOf(owner).call()
+        balance = self.balanceOf(tokenAddr, owner)
 
-        allowanceAmount = contractInstance.functions.allowance(
-            owner, spender).call()
+        allowanceAmount = self.allowance(tokenAddr, owner , spender)
 
-        allowanceAmount = w3.fromWei(allowanceAmount, 'ether')
+        allowanceAmount = self.getConnection().fromWei(allowanceAmount, 'ether')
 
         totalAmount = allowanceAmount + amount
 
         if totalAmount > balance:
             return "amount exceeds balance"
 
-        totalAmount = w3.toWei(totalAmount, 'ether')
+        totalAmount = self.getConnection().toWei(totalAmount, 'ether')
 
-        Transfer = contractInstance.functions.approve(spender, totalAmount)
+        Transfer =  self.getContractInstance(tokenAddr).functions.approve(spender, totalAmount)
 
         hexData = Transfer._encode_transaction_data()
 
@@ -227,8 +222,8 @@ class XRC20:
 
         estimateGas = Transfer.estimateGas()
 
-        nonce = w3.eth.getTransactionCount(owner)
-        gasPrice = w3.eth.gas_price
+        nonce = self.getConnection().eth.getTransactionCount(owner)
+        gasPrice = self.getConnection().eth.gas_price
 
         tx = {
             'nonce': nonce,
@@ -237,33 +232,31 @@ class XRC20:
             'gas': estimateGas,
             'gasPrice': gasPrice,
         }
-        signedTx = w3.eth.account.signTransaction(tx, ownerPrivateKey)
+        signedTx = self.getConnection().eth.account.signTransaction(tx, ownerPrivateKey)
 
-        txHash = w3.eth.sendRawTransaction(signedTx.rawTransaction)
-        return w3.toHex(txHash)
+        txHash = self.getConnection().eth.sendRawTransaction(signedTx.rawTransaction)
+        return self.getConnection().toHex(txHash)
 
     # decrease the amount of tokens that an owner allowed to a spender.
     # This function required arguments.
     # owner address, ownerPrivateKey, spender address, token address, amount.
 
-    def decreaseAllowance(tokenAddr, ownerAddress, ownerPrivateKey,  spenderAddress, amount):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc20abi)
+    def decreaseAllowance(self, tokenAddr, ownerAddress, ownerPrivateKey,  spenderAddress, amount):
 
         owner = Web3.toChecksumAddress(ownerAddress)
         spender = Web3.toChecksumAddress(spenderAddress)
 
-        allowanceAmount = contractInstance.functions.allowance(
-            owner, spender).call()
-        allowanceAmount = (w3.fromWei(allowanceAmount, 'ether'))
+        allowanceAmount = self.allowance(tokenAddr, owner, spender)
+        allowanceAmount = self.getConnection().fromWei(allowanceAmount, 'ether')
 
         if allowanceAmount >= amount:
             totalAmount = allowanceAmount - amount
         else:
             totalAmount = amount - allowanceAmount
 
-        totalAmount = w3.toWei(totalAmount, 'ether')
+        totalAmount = self.getConnection().toWei(totalAmount, 'ether')
 
-        approveData = contractInstance.functions.approve(spender, totalAmount)
+        approveData =  self.getContractInstance(tokenAddr).functions.approve(spender, totalAmount)
 
         hexData = approveData._encode_transaction_data()
 
@@ -271,8 +264,8 @@ class XRC20:
 
         estimateGas = approveData.estimateGas()
 
-        nonce = w3.eth.getTransactionCount(owner)
-        gasPrice = w3.eth.gas_price
+        nonce = self.getConnection().eth.getTransactionCount(owner)
+        gasPrice = self.getConnection().eth.gas_price
 
         tx = {
             'nonce': nonce,
@@ -281,26 +274,24 @@ class XRC20:
             'gas': estimateGas,
             'gasPrice': gasPrice,
         }
-        signedTx = w3.eth.account.signTransaction(tx, ownerPrivateKey)
+        signedTx = self.getConnection().eth.account.signTransaction(tx, ownerPrivateKey)
 
-        txHash = w3.eth.sendRawTransaction(signedTx.rawTransaction)
-        return w3.toHex(txHash)
+        txHash = self.getConnection().eth.sendRawTransaction(signedTx.rawTransaction)
+        return self.getConnection().toHex(txHash)
 
     # Transfer tokens from one address to another.
     # This function requires following arguments.
     # owner address, spenderPrivateKey, spender address, receiver address, token address, amount.
 
-    def transferFrom(tokenAddr, ownerAddress,  spenderPrivateKey,  spenderAddress, receiver, amount):
-
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc20abi)
+    def transferFrom(self, tokenAddr, ownerAddress,  spenderPrivateKey,  spenderAddress, receiver, amount):
 
         owner = Web3.toChecksumAddress(ownerAddress)
         receiverAddres = Web3.toChecksumAddress(receiver)
         spender = Web3.toChecksumAddress(spenderAddress)
 
-        amount = w3.toWei(amount, 'ether')
+        amount = self.getConnection().toWei(amount, 'ether')
 
-        transferData = contractInstance.functions.transferFrom(
+        transferData = self.getContractInstance(tokenAddr).functions.transferFrom(
             owner, receiverAddres, amount)
 
         estimateGas = transferData.estimateGas({
@@ -311,8 +302,8 @@ class XRC20:
 
         data = hexstr_if_str(to_bytes, hexData)
 
-        nonce = w3.eth.getTransactionCount(spender)
-        gasPrice = w3.eth.gas_price
+        nonce = self.getConnection().eth.getTransactionCount(spender)
+        gasPrice = self.getConnection().eth.gas_price
 
         tx = {
             'nonce': nonce,
@@ -321,7 +312,7 @@ class XRC20:
             'gas': estimateGas,
             'gasPrice': gasPrice,
         }
-        signedTx = w3.eth.account.signTransaction(tx, spenderPrivateKey)
+        signedTx = self.getConnection().eth.account.signTransaction(tx, spenderPrivateKey)
 
-        txHash = w3.eth.sendRawTransaction(signedTx.rawTransaction)
-        return w3.toHex(txHash)
+        txHash = self.getConnection().eth.sendRawTransaction(signedTx.rawTransaction)
+        return self.getConnection().toHex(txHash)

@@ -3,55 +3,59 @@ from web3._utils.encoding import (
     hexstr_if_str,
     to_bytes,
 )
-from decouple import config
-import json
 
 
-rpcUrl = config('NETWORK_URL')
+# xrc721 abi.json
+xrc721abi = "[{\"constant\":true,\"inputs\":[{\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"name\",\"outputs\":[{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"getApproved\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"to\",\"type\":\"address\"},{\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"approve\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"totalSupply\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"from\",\"type\":\"address\"},{\"name\":\"to\",\"type\":\"address\"},{\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"transferFrom\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"owner\",\"type\":\"address\"},{\"name\":\"index\",\"type\":\"uint256\"}],\"name\":\"tokenOfOwnerByIndex\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"from\",\"type\":\"address\"},{\"name\":\"to\",\"type\":\"address\"},{\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"safeTransferFrom\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"index\",\"type\":\"uint256\"}],\"name\":\"tokenByIndex\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"ownerOf\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"balanceOf\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"symbol\",\"outputs\":[{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"to\",\"type\":\"address\"},{\"name\":\"approved\",\"type\":\"bool\"}],\"name\":\"setApprovalForAll\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"from\",\"type\":\"address\"},{\"name\":\"to\",\"type\":\"address\"},{\"name\":\"tokenId\",\"type\":\"uint256\"},{\"name\":\"_data\",\"type\":\"bytes\"}],\"name\":\"safeTransferFrom1\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"tokenURI\",\"outputs\":[{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_to\",\"type\":\"address\"},{\"name\":\"_tokenId\",\"type\":\"uint256\"},{\"name\":\"_uri\",\"type\":\"string\"}],\"name\":\"mint\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"owner\",\"type\":\"address\"},{\"name\":\"operator\",\"type\":\"address\"}],\"name\":\"isApprovedForAll\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"symbol\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"to\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"Transfer\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"approved\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"Approval\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"operator\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"approved\",\"type\":\"bool\"}],\"name\":\"ApprovalForAll\",\"type\":\"event\"}]"
 
-# HTTPProvider:
-w3 = Web3(Web3.HTTPProvider(rpcUrl))
-
-# path of abi file
-with open('./common/xrc721abi.json') as abiJson:
-    xrc721abi = json.load(abiJson)
 
 # This is a class which consists all the methods as per XRC721 standards.
 
 class XRC721:
 
+    def __init__(self,rpcUrl):
+        self.rpcUrl = rpcUrl
+
+    # connection to network.
+
+    def getConnection(self):
+        w3 = Web3(Web3.HTTPProvider(self.rpcUrl))
+        return w3
+    
+    # get contract Instance.
+
+    def getContractInstance(self, tokenAddr):
+        contractInstance = self.getConnection().eth.contract(address=tokenAddr, abi=xrc721abi)
+        return contractInstance
+
     # Gets the Name of the specified address.
     # token address required as an argument.
 
-    def name(tokenAddr):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc721abi)
-        result = contractInstance.functions.name().call()
+    def name(self, tokenAddr):
+        result = self.getContractInstance(tokenAddr).functions.name().call()
         return result
 
     # Gets the Symbol of the specified address.
     # token address required as an argument.
 
-    def symbol(tokenAddr):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc721abi)
-        result = contractInstance.functions.symbol().call()
+    def symbol(self, tokenAddr):
+        result = self.getContractInstance(tokenAddr).functions.symbol().call()
         return result
 
     # Gets the owner of an NFT.
     # required arguments.
     # token address, token id.
 
-    def ownerOf(tokenAddr, tokenId):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc721abi)
-        result = contractInstance.functions.ownerOf(tokenId).call()
+    def ownerOf(self, tokenAddr, tokenId):
+        result = self.getContractInstance(tokenAddr).functions.ownerOf(tokenId).call()
         return result
 
     # Gets the Totalsupply of the specified address.
     # token address required as an argument.
     
-    def totalSupply(tokenAddr):
+    def totalSupply(self, tokenAddr):
         token = Web3.toChecksumAddress(tokenAddr)
-        contractInstance = w3.eth.contract(address=token, abi=xrc721abi)
-        result = contractInstance.functions.totalSupply().call()
+        result = self.getContractInstance(tokenAddr).functions.totalSupply().call()
         resultt = str(result)
         return resultt
 
@@ -59,10 +63,9 @@ class XRC721:
     # reuired arguments
     # token address, owner address.
 
-    def balanceOf(tokenAddr, ownerAddress):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc721abi)
+    def balanceOf(self, tokenAddr, ownerAddress):
         owner = Web3.toChecksumAddress(ownerAddress)
-        result = contractInstance.functions.balanceOf(owner).call()
+        result = self.getContractInstance(tokenAddr).functions.balanceOf(owner).call()
         return result
 
     # A distinct Uniform Resource Identifier (URI) for a given asset.
@@ -71,9 +74,8 @@ class XRC721:
     # tokenId The identifier for an NFT.
     # address of the token.
     
-    def tokenURI(tokenAddr, tokenId):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc721abi)
-        result = contractInstance.functions.tokenURI(tokenId).call()
+    def tokenURI(self, tokenAddr, tokenId):
+        result = self.getContractInstance(tokenAddr).functions.tokenURI(tokenId).call()
         return result
 
     # Enumerate NFTs assigned to an owner.
@@ -81,10 +83,9 @@ class XRC721:
     # IndexNO A counter less than `totalSupply()`.
     # The token identifier for the `index`th NFT assigned to `owner`.
 
-    def tokenByIndex(tokenAddr, index):
+    def tokenByIndex(self, tokenAddr, index):
         token = Web3.toChecksumAddress(tokenAddr)
-        contractInstance = w3.eth.contract(address=token, abi=xrc721abi)
-        result = contractInstance.functions.tokenByIndex(index).call()
+        result = self.getContractInstance(tokenAddr).functions.tokenByIndex(index).call()
         return result
 
     # Enumerate NFTs assigned to an owner.
@@ -92,11 +93,10 @@ class XRC721:
     # required arguments.
     # owner address, token address, token index.
     
-    def tokenofOwnerByIndex(tokenAddr, ownerAddress, index):
+    def tokenofOwnerByIndex(self, tokenAddr, ownerAddress, index):
         token = Web3.toChecksumAddress(tokenAddr)
-        contractInstance = w3.eth.contract(address=token, abi=xrc721abi)
         owner = Web3.toChecksumAddress(ownerAddress)
-        result = contractInstance.functions.tokenOfOwnerByIndex(
+        result = self.getContractInstance(token).functions.tokenOfOwnerByIndex(
             owner, index).call()
         return result
 
@@ -106,10 +106,9 @@ class XRC721:
     #  required arguments.
     # token address, interface id.
 
-    def supportInterface(tokenAddr, interfaceId):
+    def supportInterface(self, tokenAddr, interfaceId):
         token = Web3.toChecksumAddress(tokenAddr)
-        contractInstance = w3.eth.contract(address=token, abi=xrc721abi)
-        result = contractInstance.functions.supportsInterface(
+        result = self.getContractInstance(token).functions.supportsInterface(
             interfaceId).call()
         return result
 
@@ -117,20 +116,18 @@ class XRC721:
     # required arguments.
     # token address, tokenId.
 
-    def getApproved(tokenAddr, tokenId):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc721abi)
-        result = contractInstance.functions.getApproved(tokenId).call()
+    def getApproved(self, tokenAddr, tokenId):
+        result = self.getContractInstance(tokenAddr).functions.getApproved(tokenId).call()
         return result
 
     # Tells whether an operator is approved by a given owner.
     # required arguments.
     # owner address, spender address, token address.
 
-    def isApprovedForAll(tokenAddr, ownerAddress, spenderAddress):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc721abi)
+    def isApprovedForAll(self, tokenAddr, ownerAddress, spenderAddress):
         owner = Web3.toChecksumAddress(ownerAddress)
         spender = Web3.toChecksumAddress(spenderAddress)
-        result = contractInstance.functions.isApprovedForAll(
+        result = self.getContractInstance(tokenAddr).functions.isApprovedForAll(
             owner, spender).call()
         return result
 
@@ -140,13 +137,12 @@ class XRC721:
     # required arguments.
     # tokenAddress, owner address, ownerPrivateKey, spenderAddress, tokenID.
 
-    def approve(tokenAddr, ownerAddress, ownerPrivateKey,  spenderAddress, tokenId):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc721abi)
+    def approve(self, tokenAddr, ownerAddress, ownerPrivateKey,  spenderAddress, tokenId):
 
         owner = Web3.toChecksumAddress(ownerAddress)
         spender = Web3.toChecksumAddress(spenderAddress)
 
-        approveData = contractInstance.functions.approve(spender, tokenId)
+        approveData = self.getContractInstance(tokenAddr).functions.approve(spender, tokenId)
 
         hexData = approveData._encode_transaction_data()
 
@@ -156,9 +152,9 @@ class XRC721:
             'from': owner,
         })
 
-        nonce = w3.eth.getTransactionCount(owner)
+        nonce = self.getConnection().eth.getTransactionCount(owner)
 
-        gasPrice = w3.eth.gas_price
+        gasPrice = self.getConnection().eth.gas_price
 
         tx = {
             'nonce': nonce,
@@ -168,23 +164,22 @@ class XRC721:
             'gasPrice': gasPrice,
         }
 
-        signedTx = w3.eth.account.signTransaction(tx, ownerPrivateKey)
+        signedTx = self.getConnection().eth.account.signTransaction(tx, ownerPrivateKey)
 
-        txHash = w3.eth.sendRawTransaction(signedTx.rawTransaction)
-        return w3.toHex(txHash)
+        txHash = self.getConnection().eth.sendRawTransaction(signedTx.rawTransaction)
+        return self.getConnection().toHex(txHash)
 
     # Enable or disable approval for a third party ("operator") to manage all of `Owner`'s assets
     # Emits the ApprovalForAll event. The contract MUST allow multiple operators per owner.
     # required arguments.
     # token address, owner address, ownerPrivateKey, sepnder address, tokenId.
      
-    def setApprovalForAll(tokenAddr, ownerAddress, ownerPrivateKey,  spenderAddress, boolValue):
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc721abi)
+    def setApprovalForAll(self, tokenAddr, ownerAddress, ownerPrivateKey,  spenderAddress, boolValue):
 
         owner = Web3.toChecksumAddress(ownerAddress)
         spender = Web3.toChecksumAddress(spenderAddress)
 
-        approveData = contractInstance.functions.setApprovalForAll(
+        approveData = self.getContractInstance(tokenAddr).functions.setApprovalForAll(
             spender, boolValue)
 
         hexData = approveData._encode_transaction_data()
@@ -195,9 +190,9 @@ class XRC721:
             'from': owner,
         })
 
-        nonce = w3.eth.getTransactionCount(owner)
+        nonce = self.getConnection().eth.getTransactionCount(owner)
 
-        gasPrice = w3.eth.gas_price
+        gasPrice = self.getConnection().eth.gas_price
 
         tx = {
             'nonce': nonce,
@@ -207,25 +202,23 @@ class XRC721:
             'gasPrice': gasPrice,
         }
 
-        signedTx = w3.eth.account.signTransaction(tx, ownerPrivateKey)
+        signedTx = self.getConnection().eth.account.signTransaction(tx, ownerPrivateKey)
 
-        txHash = w3.eth.sendRawTransaction(signedTx.rawTransaction)
-        return w3.toHex(txHash)
+        txHash = self.getConnection().eth.sendRawTransaction(signedTx.rawTransaction)
+        return self.getConnection().toHex(txHash)
 
     # Transfer ownership of an NFT -- THE CALLER IS RESPONSIBLE
     # to confirm that `reciever Address` is capable of receiving NFTs or else they may be permanently lost.
     # required arguments.
     # token address, owner address, spender address, spenderPrivateKey, receiver address, tokenId.
 
-    def transferFrom(tokenAddr, ownerAddress, spenderAddress,  spenderPrivateKey, receiver, tokenId):
-
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc721abi)
+    def transferFrom(self, tokenAddr, ownerAddress, spenderAddress,  spenderPrivateKey, receiver, tokenId):
 
         owner = Web3.toChecksumAddress(ownerAddress)
         receiverAddres = Web3.toChecksumAddress(receiver)
         spender = Web3.toChecksumAddress(spenderAddress)
 
-        transferData = contractInstance.functions.transferFrom(
+        transferData = self.getContractInstance(tokenAddr).functions.transferFrom(
             owner, receiverAddres, tokenId)
 
         estimateGas = transferData.estimateGas({
@@ -236,8 +229,8 @@ class XRC721:
 
         data = hexstr_if_str(to_bytes, hexData)
 
-        nonce = w3.eth.getTransactionCount(spender)
-        gasPrice = w3.eth.gas_price
+        nonce = self.getConnection().eth.getTransactionCount(spender)
+        gasPrice = self.getConnection().eth.gas_price
 
         tx = {
             'nonce': nonce,
@@ -246,27 +239,25 @@ class XRC721:
             'gas': estimateGas,
             'gasPrice': gasPrice,
         }
-        signedTx = w3.eth.account.signTransaction(tx, spenderPrivateKey)
+        signedTx = self.getConnection().eth.account.signTransaction(tx, spenderPrivateKey)
 
-        txHash = w3.eth.sendRawTransaction(signedTx.rawTransaction)
-        return w3.toHex(txHash)
+        txHash = self.getConnection().eth.sendRawTransaction(signedTx.rawTransaction)
+        return self.getConnection().toHex(txHash)
 
     # Transfers the ownership of an NFT from one address to another address.
     # required arguments.
     # token address, owner address, spender address, spenderPrivateKey, receiver address, tokenId. 
 
-    def safeTransferFrom(tokenAddr, ownerAddress, spenderAddress,  spenderPrivateKey, receiver, tokenId):
-
-        contractInstance = w3.eth.contract(address=tokenAddr, abi=xrc721abi)
+    def safeTransferFrom(self, tokenAddr, ownerAddress, spenderAddress,  spenderPrivateKey, receiver, tokenId):
 
         owner = Web3.toChecksumAddress(ownerAddress)
         receiverAddres = Web3.toChecksumAddress(receiver)
         spender = Web3.toChecksumAddress(spenderAddress)
 
-        transferData = contractInstance.functions.safeTransferFrom(
+        transferData = self.getContractInstance(tokenAddr).functions.safeTransferFrom(
             owner, receiverAddres, tokenId)
 
-        estimateGas = transferData.estimateGas({   
+        estimateGas = transferData.estimateGas({
             'from': spender,
         })
 
@@ -274,8 +265,8 @@ class XRC721:
 
         data = hexstr_if_str(to_bytes, hexData)
 
-        nonce = w3.eth.getTransactionCount(spender)
-        gasPrice = w3.eth.gas_price
+        nonce = self.getConnection().eth.getTransactionCount(spender)
+        gasPrice = self.getConnection().eth.gas_price
 
         tx = {
             'nonce': nonce,
@@ -284,7 +275,7 @@ class XRC721:
             'gas': estimateGas,
             'gasPrice': gasPrice,
         }
-        signedTx = w3.eth.account.signTransaction(tx, spenderPrivateKey)
+        signedTx = self.getConnection().eth.account.signTransaction(tx, spenderPrivateKey)
 
-        txHash = w3.eth.sendRawTransaction(signedTx.rawTransaction)
-        return w3.toHex(txHash)
+        txHash = self.getConnection().eth.sendRawTransaction(signedTx.rawTransaction)
+        return self.getConnection().toHex(txHash)
