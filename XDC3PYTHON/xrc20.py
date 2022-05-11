@@ -1,4 +1,3 @@
-from lib2to3.pgen2 import token
 from web3 import Web3
 from web3._utils.encoding import (
     hexstr_if_str,
