@@ -67,6 +67,11 @@ This example returns symbol of the specified address.
 
 **HTTP transport**
 
+## Required Data Types
+ **Token Address** - `str type`
+ **Account Address** - `str type`
+ **amount** & **tokenId** - `int type`
+
 ### Author
 [XDCFoundation](https://github.com/XDCFoundation/XDC_Python_SDK_V1)
 
