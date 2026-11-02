@@ -3,7 +3,8 @@ from net import net_Request
 from eth import eth_Request
 from tatum import tatum_Request
 
-import hashlib 
+import hashlib
+import os 
 
 class Test:
     def __init__(self):
@@ -72,8 +73,8 @@ class Test:
         #print(eth_Request.sendTransaction())
 
     def tatum_test(self):
-        API_KEY = "b56527b4-1db2-4842-b388-357a7ad44d2a"
-        Seed = "Quincy_JOJONONONO"
+        API_KEY = os.environ["TATUM_API_KEY"]
+        Seed = os.environ["TATUM_SEED"]
         Hash = "0xead075790098c7261e9fad995183fcc6eb4c3102f22c2507fc0fc25bd2cd0aa9"
         Address = "xdce4c4febe1cb34c3490167c163c9ed92049b32b5c" 
         xpub = tatum_Request.Generate_XDC_Wallet(Seed,API_KEY,form="Text")

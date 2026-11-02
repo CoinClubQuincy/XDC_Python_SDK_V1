@@ -1,234 +1,94 @@
-# **XDC Python SDK V1.0**
+<p align="center">
+  <img src=".github/assets/banner.svg" alt="XDC Python SDK: A small Python client for the XDC JSON-RPC API" width="100%">
+</p>
 
-### **Summary:**
+<p align="center">
+  
+<a href="https://github.com/CoinClubQuincy/XDC_Python_SDK_V1/actions/workflows/build.yml"><img alt="build" src="https://github.com/CoinClubQuincy/XDC_Python_SDK_V1/actions/workflows/build.yml/badge.svg"></a>  <img alt="network: XDC" src="https://img.shields.io/badge/network-XDC-2563eb">  <img alt="language: Python" src="https://img.shields.io/badge/language-Python-0e7490">  <img alt="status: early" src="https://img.shields.io/badge/status-early-b45309">  <img alt="license: none yet" src="https://img.shields.io/badge/license-none%20yet-475569">
+</p>
 
-This is a Python SDK for XinFin API published by Quincy@xinfin.org
+<p align="center">
+  <a href="#quick-start">Quick start</a> · <a href="#what-is-included">What is included</a> · <a href="#what-is-tested">What is tested</a>
+</p>
 
-##### **Haxidecimal Outputs**
+This is a lightweight Python wrapper for the XDC JSON-RPC API. It needs no third-party packages, and each method returns JSON by default or a plain value with `form="Text"`.
 
-All hexadecimal need to be converted into **integers**
+> [!NOTE]
+> This is an early SDK. For new projects, also look at [CoinClub_Framework](https://github.com/CoinClubQuincy/CoinClub_Framework), which has an XDC adapter, wallets and tests.
 
-##### **JSON Schema**
+## Quick start
 
-- By default all functions output in JSON so i implemeted a simplified output for variable just place class(form = "Text")  for vatiabble output as string | Default output "JSON"
-
-- The JSON Schema outputed by all the functions is this:
-
-```json
-{
-  "jsonrpc":"2.0",
-  "id":1,
-  "result":EXAMPLE_RESULT
-}
+```bash
+git clone https://github.com/CoinClubQuincy/XDC_Python_SDK_V1.git
+cd XDC_Python_SDK_V1
 ```
-
-------
-
-
-
-## **web3**
-
-#### **POST /clientVersion**
 
 ```python
-Version = web3_Request.clientVersion()
-print(Version)
-##Output {"jsonrpc":"2.0","id":67,"result":"50"}
+from net import net_Request
+from eth import eth_Request
+
+print(net_Request.version(form="Text"))
+print(int(eth_Request.gasPrice(form="Text"), 16))
 ```
 
-Returns the current client version.
+Hexadecimal results need converting, as in the second line. Run this from the repository folder: the local `web3.py` would otherwise be confused with the popular `web3` package.
 
-**Parameters**
+## What is included
 
-**form** =  "Text"  for varriabled output as string | Default output "JSON"
-
-**Returns**
-
-`String` - The current client version
-
-#### **POST /sha3**
-
-```python
-import hashlib 
-String= "Q"
-Hash =  hashlib.sha256(String.encode('utf-8')).hexdigest()
-
-print(web3_Request.sha3(Hash=Hash,form="Text"))
-##Output 0x6d1223fcb20bababbf18827dbe3ac76b13f03e2.........
+```mermaid
+flowchart LR
+    A[Your Python code] --> B[web3, net, eth]
+    B --> R[rpc.xinfin.network]
+    A --> T[tatum]
+    T --> TA[Tatum API]
 ```
 
-Returns Keccak-256 (not the standardized SHA3-256) of the given data.
+| Module | Methods | Covers |
+| --- | --- | --- |
+| [`web3.py`](web3.py) | 2 | `clientVersion`, `sha3` |
+| [`net.py`](net.py) | 3 | `version`, `listening`, `peerCount` |
+| [`eth.py`](eth.py) | 29 | Blocks, transactions, accounts, gas and sync state |
+| [`tatum.py`](tatum.py) | 13 | Wallets, balances and transfers through the [Tatum](https://tatum.io) API |
 
-**Parameters**
+The full reference is in [docs/API.md](docs/API.md).
 
-​	**form** =  "Text"  for vatiabble output as string | Default output JSON
+### Using Tatum
 
-​	**Hash** - the Hash to convert into a SHA3 hash 
+`EXECUTE_Test.py` reads its credentials from the environment and sends requests to Tatum:
 
-**Returns**`DATA` - The SHA3 result of the given string.
-
-## **net**
-
-#### **POST /version**
-
-```python
-Version = net_Request.version(form="Text")
-print(Version)
-##Output 50
+```bash
+export TATUM_API_KEY="your-key"
+export TATUM_SEED="your-test-seed"
+python3 EXECUTE_Test.py
 ```
 
-Returns the current network id.
-
-**Parameters**
-
-none
-
-**Returns**
-
-- `String` - The current network id.
-    - `"50"`: XinFin Mainnet
-    - `"89"`: XinFin Testnet
-
-#### **POST /listening**
-
-```python
-Listening = net_Request.listening(form="Text")
-print(Listening)
-##Output True
-```
-
-Returns `true` if client is actively listening for network connections.
-
-**Parameters**
-
-none
-
-**Returns**
-
-- `Boolean` - `true` when listening, otherwise `false`.
-
-
-
-#### **POST /peerCount**
-
-```python
-Peer = net_Request.peerCount(form="Text")
-print(Peer)
-##Output 0x8
-```
-
-Returns number of peers currently connected to the client.
-
-**Parameters**
-
-none
-
-**Returns**
-
-- `QUANTITY` - integer of the number of connected peers.
-
-
-
-## **eth**
-
-#### **POST /protocolVersion**
-
-```python
-ETH_Version = eth_Request.protocolVersion(form="Text")
-print(int(ETH_Version,16)
-##Output 63
-```
-
-Returns the current ethereum protocol version.
-
-**Parameters**
-
-none
-
-**Returns**
-
-- `String` - The current ethereum protocol version
-
-
-
-#### **POST /syncing**
-
-```python
-Sync = eth_Request.syncing(form="Text")
-print(Sync)
-##Output False
-```
-
-Returns an object with data about the sync status or false.
-
-**Parameters**
-
-none
-
-**Returns**
-
-- `Object|Boolean`, An object with sync status data or FALSE, when not syncing:
-    - `startingBlock`: `QUANTITY` - The block at which the import started (will only be reset, after the sync reached his head)
-    - `currentBlock`: `QUANTITY` - The current block, same as eth_blockNumber
-    - `highestBlock`: `QUANTITY` - The estimated highest block
-
-
-
-#### **POST /coinbase**
-
-```python
-coinbase = eth_Request.coinbase(form="Text")
-print(coinbase)
-##Output xdc3056a8bff9a17b12d08f1837d0b44cf1e2018fbe
-```
-
-Returns the client coinbase address. **Parameters** none **Returns**
-
-- `DATA`, 20 bytes - the current coinbase address.
-
-
-
-#### **POST /gasPrice**
-
-```python
-gasPrice = eth_Request.gasPrice(form="Text")
-print(gasPrice)
-##Output 0x9c4
-```
-
-Returns the current price per gas in wei. **Parameters** none **Returns**
-
-- `QUANTITY` - integer of the current gas price in wei.
-
-
-
-#### **POST /accounts**
-
-```
-POST /accounts
-```
-
-Returns a list of addresses owned by client.
-
-**Parameters**
-
-none
-
-**Returns**
-
-- `Array of DATA`, 20 Bytes - addresses owned by the client
-
-
-
-#### **POST /blockNumber**
-
-```
-POST /blockNumber
-```
-
-Returns the number of most recent block. **Parameters** none **Returns**
-
-- `QUANTITY` - integer of the current block number the client is on.
-
-
-
+## What is tested
+
+CI checks that every Python file parses. **The SDK's calls were not run in this review**, and the repository has no real test suite. The XDC mainnet RPC it uses, `rpc.xinfin.network`, did answer a separate check with chain ID 50.
+
+<details>
+<summary><strong>More XDC projects</strong></summary>
+
+| Group | Project | What it is |
+| --- | --- | --- |
+| Standards | [XRC-SHARES](https://github.com/CoinClubQuincy/XRC-SHARES) | Dividend-paying NFT shares and SPLITS for a DApp |
+| Standards | [XRCDividendPlus](https://github.com/CoinClubQuincy/XRCDividendPlus) | Dividend-paying XRC-20 token |
+| Treasury and finance | [Multi-Sig-Treasury](https://github.com/CoinClubQuincy/Multi-Sig-Treasury) | Treasury controlled by tokenized keys |
+| Treasury and finance | [XRC-Airdrop](https://github.com/CoinClubQuincy/XRC-Airdrop) | Self-run token airdrop |
+| Treasury and finance | [XRC-Credit](https://github.com/CoinClubQuincy/XRC-Credit) | Debt contract skeleton |
+| Treasury and finance | [XDC-Defi-Instruments](https://github.com/CoinClubQuincy/XDC-Defi-Instruments) | Assets, agreements, forwards, futures and a marketplace |
+| Identity and access | [LoginMFAContract](https://github.com/CoinClubQuincy/LoginMFAContract) | Login with a password and an NFT |
+| Identity and access | [PrivateAccessToken](https://github.com/CoinClubQuincy/PrivateAccessToken) | Token-gated contract data demo |
+| Identity and access | [Delegated_Authority](https://github.com/CoinClubQuincy/Delegated_Authority) | KYC notary proof of concept |
+| Learning and libraries | [XDC-LemonadeStand](https://github.com/CoinClubQuincy/XDC-LemonadeStand) | Workshop DApp built on XRC-SHARES |
+| Learning and libraries | [Non-Financial-SmartContracts](https://github.com/CoinClubQuincy/Non-Financial-SmartContracts) | Games, inventory, keys and on-chain repositories |
+| Tools | [PrivateXDCNode_SetupScript](https://github.com/CoinClubQuincy/PrivateXDCNode_SetupScript) | Private XDC network setup scripts |
+| Tools | [WebApp_to_XDCPay](https://github.com/CoinClubQuincy/WebApp_to_XDCPay) | Web app to XDCPay tutorial |
+| Multi-chain | [CoinClub_Framework](https://github.com/CoinClubQuincy/CoinClub_Framework) | Python library with an XDC adapter |
+| Interfaces | [Contract_Interface_Model_Language](https://github.com/CoinClubQuincy/Contract_Interface_Model_Language) | Interface documents for smart contracts and APIs |
+
+</details>
+
+## License
+
+This repository has no license file yet, so default copyright applies.
