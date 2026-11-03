@@ -15,10 +15,15 @@ def _request(call, path, API_KEY, payload=None, conn=None):
     if own_connection:
         conn = API.Connect(TATUM_HOST)
     try:
-        return API.Call(call, body, path, conn, headers={"x-api-key": API_KEY})
+        text = API.Call(call, body, path, conn, headers={"x-api-key": API_KEY})
     finally:
         if own_connection:
             conn.close()
+    try:
+        json.loads(text)
+    except ValueError as error:
+        raise APIError("Response was not JSON: %s" % text[:200]) from error
+    return text
 
 
 def _field(text, name):

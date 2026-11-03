@@ -73,7 +73,7 @@ python3 EXECUTE_Test.py tatum
 
 ## What is tested
 
-[`tests/test_sdk.py`](tests/test_sdk.py) has 43 tests and runs in CI on every push. They use a local mock server and make no outside network calls.
+[`tests/test_sdk.py`](tests/test_sdk.py) has 44 tests and runs in CI on every push. They use a local mock server and make no outside network calls.
 
 | Tested | Not tested |
 | --- | --- |

@@ -289,6 +289,11 @@ class TatumTest(ServerTest):
         tatum_Request.XDC_Block_by_Hash(self.KEY, "../../admin?x=1", conn=self.conn)
         self.assertEqual(self.last()["path"], "/v3/xdc/block/..%2F..%2Fadmin%3Fx%3D1")
 
+    def test_unreadable_replies_are_raised(self):
+        self.server.reply = "<html>proxy login</html>"
+        with self.assertRaises(APIError):
+            tatum_Request.XDC_Account_Balance(self.KEY, ADDRESS, conn=self.conn)
+
     def test_dot_paths_are_refused(self):
         for value in (".", ".."):
             with self.subTest(value=value):
