@@ -32,10 +32,14 @@ class API:
             conn.request(call, content, payload, all_headers)
             res = conn.getresponse()
             data = res.read().decode("utf-8")
-        except (OSError, http.client.HTTPException, UnicodeDecodeError) as error:
+        except (OSError, http.client.HTTPException) as error:
             conn.close()
             raise APIError("Request failed: %s" % error) from error
-        if res.status >= 400:
+        except ValueError:
+            # http.client puts the bad value in its message, and that value can be an API key
+            conn.close()
+            raise APIError("Request failed: a header or path was not valid, or the reply could not be read") from None
+        if res.status < 200 or res.status >= 300:
             raise APIError("Server returned HTTP %s: %s" % (res.status, data[:200]))
         return data
 
@@ -49,13 +53,16 @@ class API:
             raise APIError("Unexpected response: %s" % text[:200])
         if item.get("error"):
             error = item["error"]
+            if not isinstance(error, dict):
+                raise APIError("Unexpected error response: %s" % text[:200])
             raise RPCError(error.get("code"), error.get("message"))
         if "result" not in item:
             raise APIError("Response has no result: %s" % text[:200])
         return item["result"]
 
     def Format(method, params, conn=None, form="JSON", id=1, content="/"):
-        """Calls a JSON-RPC method. form="JSON" returns the raw response, anything else the result."""
+        """Calls a JSON-RPC method. form="JSON" returns the raw response, anything else the result.
+        Both forms raise RPCError or APIError on a failed call."""
         payload = json.dumps({"jsonrpc": "2.0", "method": method, "params": params, "id": id})
         own_connection = conn is None
         if own_connection:
@@ -65,9 +72,8 @@ class API:
         finally:
             if own_connection:
                 conn.close()
-        if form == "JSON":
-            return text
-        return API.Request_formatter(text)
+        result = API.Request_formatter(text)
+        return text if form == "JSON" else result
 
     def required(name, value):
         """Refuses an empty input, so a call never goes out with a value the caller didn't choose."""

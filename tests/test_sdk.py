@@ -163,6 +163,16 @@ class ResponsesTest(ServerTest):
         self.assertEqual(caught.exception.code, -32601)
         self.assertIn("not found", str(caught.exception))
 
+    def test_rpc_errors_are_raised_in_the_json_form_too(self):
+        self.server.reply = json.dumps({"jsonrpc": "2.0", "id": 1, "error": {"code": -32601, "message": "not found"}})
+        with self.assertRaises(RPCError):
+            net_Request.version(conn=self.conn)
+
+    def test_an_error_that_is_not_an_object_is_still_an_error(self):
+        self.server.reply = json.dumps({"jsonrpc": "2.0", "id": 1, "error": "busy"})
+        with self.assertRaises(APIError):
+            net_Request.version(conn=self.conn, form="Text")
+
     def test_a_false_result_is_still_a_result(self):
         self.server.reply = json.dumps({"jsonrpc": "2.0", "id": 1, "result": False})
         self.assertIs(eth_Request.syncing(conn=self.conn, form="Text"), False)
@@ -173,10 +183,11 @@ class ResponsesTest(ServerTest):
 
     def test_unreadable_responses_are_raised(self):
         for reply in ("<html>bad gateway</html>", "[]", "{}"):
-            with self.subTest(reply=reply):
-                self.server.reply = reply
-                with self.assertRaises(APIError):
-                    net_Request.version(conn=self.conn, form="Text")
+            for form in ("JSON", "Text"):
+                with self.subTest(reply=reply, form=form):
+                    self.server.reply = reply
+                    with self.assertRaises(APIError):
+                        net_Request.version(conn=self.conn, form=form)
 
     def test_http_errors_are_raised_in_both_forms(self):
         self.server.status = 502
@@ -186,6 +197,13 @@ class ResponsesTest(ServerTest):
                 with self.assertRaises(APIError) as caught:
                     net_Request.version(conn=self.conn, form=form)
                 self.assertIn("502", str(caught.exception))
+
+    def test_redirects_are_errors(self):
+        self.server.status = 302
+        self.server.reply = "moved"
+        with self.assertRaises(APIError) as caught:
+            net_Request.version(conn=self.conn)
+        self.assertIn("302", str(caught.exception))
 
     def test_connection_failures_are_raised(self):
         port = self.server.server_port
@@ -271,6 +289,13 @@ class TatumTest(ServerTest):
         tatum_Request.XDC_Block_by_Hash(self.KEY, "../../admin?x=1", conn=self.conn)
         self.assertEqual(self.last()["path"], "/v3/xdc/block/..%2F..%2Fadmin%3Fx%3D1")
 
+    def test_dot_paths_are_refused(self):
+        for value in (".", ".."):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    tatum_Request.XDC_Block_by_Hash(self.KEY, value, conn=self.conn)
+        self.assertEqual(self.server.requests, [])
+
     def test_transaction_text_form_returns_every_field(self):
         names = ["blockHash", "blockNumber", "from", "gas", "gasPrice", "input", "nonce", "to",
                  "transactionIndex", "value", "contractAddress", "cumulativeGasUsed", "gasUsed", "logs"]
@@ -328,6 +353,20 @@ class TatumTest(ServerTest):
         with self.assertRaises(APIError) as caught:
             tatum_Request.Current_Block_Number(self.KEY, conn=self.conn)
         self.assertNotIn(self.KEY, str(caught.exception))
+
+    def test_a_bad_api_key_is_not_echoed(self):
+        secret = "secret\nvalue"
+        with self.assertRaises(ValueError) as caught:
+            tatum_Request.Current_Block_Number(secret, conn=self.conn)
+        self.assertNotIn("secret", str(caught.exception))
+        self.assertEqual(self.server.requests, [])
+
+    def test_a_rejected_header_is_not_echoed(self):
+        with self.assertRaises(APIError) as caught:
+            API.Call("GET", None, "/", self.conn, headers={"x-api-key": "secret\nvalue"})
+        self.assertNotIn("secret", str(caught.exception))
+        self.assertTrue(caught.exception.__suppress_context__)
+        self.assertEqual(self.server.requests, [])
 
     def test_a_missing_api_key_is_refused(self):
         with self.assertRaises(ValueError):

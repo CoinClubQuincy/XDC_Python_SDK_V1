@@ -15,9 +15,9 @@ Block numbers, positions and indexes can be integers, which are converted to hex
 
 | Exception | When |
 | --- | --- |
-| `ValueError` | A required input is missing |
-| `RPCError` | The node refused the call. It has `code` and `message`. With `form="Text"` only, since `"JSON"` returns the response as it came |
-| `APIError` | The connection failed, the server returned an HTTP error, or the reply could not be read |
+| `ValueError` | A required input is missing, an API key has a control character, or a value placed in a URL is `.` or `..` |
+| `RPCError` | The node refused the call, in either form. It has `code` and `message` |
+| `APIError` | The connection failed, the server returned anything other than a 2xx status, or the reply could not be read |
 
 ## web3
 
@@ -72,11 +72,11 @@ Inputs are keyword arguments, for example `eth_Request.getBalance(Address="0x...
 
 ## tatum
 
-Arguments can be positional. API keys go in the `x-api-key` header, except for `Web3_HTTP_Driver`. Values placed in a URL are encoded, so they can't change the path.
+Arguments can be positional. API keys go in the `x-api-key` header, except for `Web3_HTTP_Driver`. Values placed in a URL are encoded, and `.` and `..` are refused, so they can't change the path.
 
 | Method | Arguments | Request | `form="Text"` returns | Note |
 | --- | --- | --- | --- | --- |
-| `Generate_XDC_Wallet` | `Seed, API_KEY` | `GET /v3/xdc/wallet` | `xpub` | Sends your seed to Tatum |
+| `Generate_XDC_Wallet` | `Seed, API_KEY` | `GET /v3/xdc/wallet` | `xpub` | Sends your seed to Tatum in the URL, so it can end up in logs |
 | `Generate_XDC_Wallet_EPK` | `API_KEY, xpub, index` | `GET /v3/xdc/address/{xpub}/{index}` | `address` |  |
 | `Generate_XDC_Private_key` | `API_KEY, Seed, index=0` | `POST /v3/xdc/wallet/priv` | `key` | Sends your seed to Tatum |
 | `Web3_HTTP_Driver` | `ApiKey` | `POST /v3/xdc/web3/{key}` |  | Puts the key in the URL |

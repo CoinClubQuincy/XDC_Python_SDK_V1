@@ -8,6 +8,8 @@ TATUM_HOST = "api-eu1.tatum.io"
 def _request(call, path, API_KEY, payload=None, conn=None):
     """Sends one request to Tatum. API_KEY never appears in an error message."""
     API.required("API_KEY", API_KEY)
+    if any(ord(character) < 32 or ord(character) == 127 for character in str(API_KEY)):
+        raise ValueError("API_KEY has a control character")
     body = None if payload is None else json.dumps(payload)
     own_connection = conn is None
     if own_connection:
@@ -27,12 +29,15 @@ def _field(text, name):
 
 
 def _path(value):
-    return quote(str(API.required("value", value)), safe="")
+    text = str(API.required("value", value))
+    if text in (".", ".."):
+        raise ValueError("A URL value cannot be . or ..")
+    return quote(text, safe="")
 
 
 class tatum_Request():
     def Generate_XDC_Wallet(Seed, API_KEY, form="JSON", conn=None):
-        """Sends the seed to Tatum. Use a test seed, and never one holding real funds."""
+        """Sends the seed to Tatum in the URL, so it can end up in proxy and server logs. Use a test seed, and never one holding real funds."""
         API.required("Seed", Seed)
         text = _request("GET", "/v3/xdc/wallet?mnemonic=%s" % quote(Seed, safe=""), API_KEY, conn=conn)
         return text if form == "JSON" else _field(text, "xpub")

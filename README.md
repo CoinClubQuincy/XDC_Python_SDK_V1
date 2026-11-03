@@ -35,7 +35,7 @@ print(eth_Request.getBalance(form="Text", Address="0xYourAddress"))
 
 Hexadecimal results need converting, as in the second line. Run this from the repository folder: the local `web3.py` would otherwise be confused with the popular `web3` package.
 
-Failures raise an exception instead of returning an empty value: `RPCError` when the node refuses a call, and `APIError` when the connection fails, the server returns an HTTP error or the reply is unreadable. A missing input raises `ValueError` before anything is sent.
+Failures raise an exception instead of returning an empty value: `RPCError` when the node refuses a call, and `APIError` when the connection fails, the server returns anything other than a 2xx status or the reply is unreadable. This applies to both forms. A missing input raises `ValueError` before anything is sent.
 
 ## What is included
 
@@ -69,11 +69,11 @@ python3 EXECUTE_Test.py tatum
 ```
 
 > [!WARNING]
-> `Generate_XDC_Wallet` and `Generate_XDC_Private_key` send your seed phrase to Tatum. `Send_XDC_ERC20` and `Execute_Smart_Contract` can send your private key. Tatum can read whatever you send, so use these only with test wallets, and sign locally for anything of value.
+> `Generate_XDC_Wallet` and `Generate_XDC_Private_key` send your seed phrase to Tatum, and the first puts it in the URL. `Send_XDC_ERC20` and `Execute_Smart_Contract` can send your private key. Tatum can read whatever you send, so use these only with test wallets, and sign locally for anything of value.
 
 ## What is tested
 
-[`tests/test_sdk.py`](tests/test_sdk.py) has 37 tests and runs in CI on every push. They use a local mock server and make no outside network calls.
+[`tests/test_sdk.py`](tests/test_sdk.py) has 43 tests and runs in CI on every push. They use a local mock server and make no outside network calls.
 
 | Tested | Not tested |
 | --- | --- |
@@ -95,7 +95,7 @@ These change how existing code calls the SDK.
 - `eth` inputs have new names: see [docs/API.md](docs/API.md). `accounts` no longer takes an argument.
 - `Send_XDC_ERC20` had a private key hard-coded in its payload. It now uses only the key you pass, and the other Tatum methods no longer send fixed sample values.
 - Importing the SDK no longer opens a connection. Each call opens and closes its own unless you pass `conn`, and connections have a 30-second timeout.
-- Failures now raise exceptions.
+- Failures now raise exceptions, including an error reply when the raw response was asked for.
 - Requests now send a `User-Agent`, because the public node refused them without one.
 - `EXECUTE_Test.py` no longer prints a private key or uses a seed. It takes `rpc` or `tatum` as an argument.
 
@@ -105,6 +105,7 @@ These change how existing code calls the SDK.
 | --- | --- |
 | The local `web3.py` shares a name with the popular `web3` package | Importing from this folder hides that package |
 | `sign` and `sendTransaction` act for accounts held by the node | They can't use your own wallet. Sign elsewhere and use `sendRawTransaction` |
+| `Generate_XDC_Wallet` puts the seed in the URL | That is Tatum's URL format, and the seed can end up in logs. Never use a seed that holds real funds |
 | `Web3_HTTP_Driver` puts the API key in the URL | That is Tatum's URL format, and the key can end up in logs |
 | Nothing signs transactions locally | The SDK has no signing code of its own |
 
