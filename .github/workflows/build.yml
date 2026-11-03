@@ -9,8 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  syntax:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: python3 -m py_compile *.py
+      - run: python3 -m unittest discover -s tests -v

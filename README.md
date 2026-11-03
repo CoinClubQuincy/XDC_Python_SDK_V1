@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick start</a> · <a href="#what-is-included">What is included</a> · <a href="#what-is-tested">What is tested</a>
+  <a href="#quick-start">Quick start</a> · <a href="#what-is-included">What is included</a> · <a href="#what-is-tested">What is tested</a> · <a href="#known-issues">Known issues</a>
 </p>
 
 This is a lightweight Python wrapper for the XDC JSON-RPC API. It needs no third-party packages, and each method returns JSON by default or a plain value with `form="Text"`.
@@ -21,17 +21,21 @@ This is a lightweight Python wrapper for the XDC JSON-RPC API. It needs no third
 ```bash
 git clone https://github.com/CoinClubQuincy/XDC_Python_SDK_V1.git
 cd XDC_Python_SDK_V1
+python3 -m unittest discover -s tests
 ```
 
 ```python
-from net import net_Request
 from eth import eth_Request
+from net import net_Request
 
 print(net_Request.version(form="Text"))
 print(int(eth_Request.gasPrice(form="Text"), 16))
+print(eth_Request.getBalance(form="Text", Address="0xYourAddress"))
 ```
 
 Hexadecimal results need converting, as in the second line. Run this from the repository folder: the local `web3.py` would otherwise be confused with the popular `web3` package.
+
+Failures raise an exception instead of returning an empty value: `RPCError` when the node refuses a call, and `APIError` when the connection fails, the server returns an HTTP error or the reply is unreadable. A missing input raises `ValueError` before anything is sent.
 
 ## What is included
 
@@ -54,17 +58,55 @@ The full reference is in [docs/API.md](docs/API.md).
 
 ### Using Tatum
 
-`EXECUTE_Test.py` reads its credentials from the environment and sends requests to Tatum:
+Each Tatum method takes your API key. `EXECUTE_Test.py` makes read-only checks against the live services, and needs nothing but the choice of service for the public node:
 
 ```bash
+python3 EXECUTE_Test.py rpc
+
 export TATUM_API_KEY="your-key"
-export TATUM_SEED="your-test-seed"
-python3 EXECUTE_Test.py
+export TATUM_ADDRESS="your-address"
+python3 EXECUTE_Test.py tatum
 ```
+
+> [!WARNING]
+> `Generate_XDC_Wallet` and `Generate_XDC_Private_key` send your seed phrase to Tatum. `Send_XDC_ERC20` and `Execute_Smart_Contract` can send your private key. Tatum can read whatever you send, so use these only with test wallets, and sign locally for anything of value.
 
 ## What is tested
 
-CI checks that every Python file parses. **The SDK's calls were not run in this review**, and the repository has no real test suite. The XDC mainnet RPC it uses, `rpc.xinfin.network`, did answer a separate check with chain ID 50.
+[`tests/test_sdk.py`](tests/test_sdk.py) has 37 tests and runs in CI on every push. They use a local mock server and make no outside network calls.
+
+| Tested | Not tested |
+| --- | --- |
+| All 29 `eth` methods, plus `net` and `web3`, sending the method and inputs they were given | `sign`, `sendTransaction` and `sendRawTransaction` against a live node |
+| Required inputs refused before anything is sent | Any Tatum call against the real Tatum service |
+| Node errors, HTTP errors, unreadable replies and connection failures | `web3.sha3` against a live node |
+| Tatum paths, payloads, URL encoding and the API key header | |
+| The API key staying out of error messages | |
+| Connections closing, and no connection being opened at import | |
+
+On 2 November 2026, the read-only methods were also run against `rpc.xinfin.network`: 26 of the 29 `eth` methods, all of `net` and `web3.clientVersion`. They returned valid replies, and the transaction lookups found the transaction they asked for. That first run also found a real bug the mock server couldn't: the node returned HTTP 403 until requests carried a `User-Agent`. This check is manual and isn't part of CI.
+
+## Changes from earlier versions
+
+These change how existing code calls the SDK.
+
+- Almost every `eth` method ignored its inputs and sent a fixed sample value, so `getBalance` always read the same address. Methods now send what you pass them.
+- `sendTransaction` sent a fixed example transaction, and `sign` sent `eth_accounts`. Both now do what their names say. `web3.clientVersion` sent `net_version`, and now sends `web3_clientVersion`.
+- `eth` inputs have new names: see [docs/API.md](docs/API.md). `accounts` no longer takes an argument.
+- `Send_XDC_ERC20` had a private key hard-coded in its payload. It now uses only the key you pass, and the other Tatum methods no longer send fixed sample values.
+- Importing the SDK no longer opens a connection. Each call opens and closes its own unless you pass `conn`, and connections have a 30-second timeout.
+- Failures now raise exceptions.
+- Requests now send a `User-Agent`, because the public node refused them without one.
+- `EXECUTE_Test.py` no longer prints a private key or uses a seed. It takes `rpc` or `tatum` as an argument.
+
+## Known issues
+
+| Issue | Effect |
+| --- | --- |
+| The local `web3.py` shares a name with the popular `web3` package | Importing from this folder hides that package |
+| `sign` and `sendTransaction` act for accounts held by the node | They can't use your own wallet. Sign elsewhere and use `sendRawTransaction` |
+| `Web3_HTTP_Driver` puts the API key in the URL | That is Tatum's URL format, and the key can end up in logs |
+| Nothing signs transactions locally | The SDK has no signing code of its own |
 
 <details>
 <summary><strong>More XDC projects</strong></summary>

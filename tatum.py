@@ -1,195 +1,126 @@
-from Base_API_Call import API
-import http.client
+from Base_API_Call import API, APIError
 import json
+from urllib.parse import quote
 
-conn = http.client.HTTPSConnection("api-eu1.tatum.io")
+TATUM_HOST = "api-eu1.tatum.io"
+
+
+def _request(call, path, API_KEY, payload=None, conn=None):
+    """Sends one request to Tatum. API_KEY never appears in an error message."""
+    API.required("API_KEY", API_KEY)
+    body = None if payload is None else json.dumps(payload)
+    own_connection = conn is None
+    if own_connection:
+        conn = API.Connect(TATUM_HOST)
+    try:
+        return API.Call(call, body, path, conn, headers={"x-api-key": API_KEY})
+    finally:
+        if own_connection:
+            conn.close()
+
+
+def _field(text, name):
+    try:
+        return json.loads(text)[name]
+    except (ValueError, KeyError, TypeError) as error:
+        raise APIError("Response has no %s" % name) from error
+
+
+def _path(value):
+    return quote(str(API.required("value", value)), safe="")
+
 
 class tatum_Request():
-    def Generate_XDC_Wallet(Seed, API_KEY,form="JSON"):
-        headers = { 'x-api-key': API_KEY }
-        conn.request("GET", "/v3/xdc/wallet?mnemonic=%s" % Seed, headers=headers)
+    def Generate_XDC_Wallet(Seed, API_KEY, form="JSON", conn=None):
+        """Sends the seed to Tatum. Use a test seed, and never one holding real funds."""
+        API.required("Seed", Seed)
+        text = _request("GET", "/v3/xdc/wallet?mnemonic=%s" % quote(Seed, safe=""), API_KEY, conn=conn)
+        return text if form == "JSON" else _field(text, "xpub")
 
-        res = conn.getresponse()
-        data = res.read()
+    def Generate_XDC_Wallet_EPK(API_KEY, xpub, index, form="JSON", conn=None):
+        text = _request("GET", "/v3/xdc/address/%s/%s" % (_path(xpub), int(index)), API_KEY, conn=conn)
+        return text if form == "JSON" else _field(text, "address")
 
+    def Generate_XDC_Private_key(API_KEY, Seed, form="JSON", index=0, conn=None):
+        """Sends the seed to Tatum and gets a private key back. Use a test seed only."""
+        API.required("Seed", Seed)
+        text = _request("POST", "/v3/xdc/wallet/priv", API_KEY, {"index": int(index), "mnemonic": Seed}, conn)
+        return text if form == "JSON" else _field(text, "key")
+
+    def Web3_HTTP_Driver(ApiKey, form="JSON", conn=None):
+        """Tatum takes the key in the URL here, so it can end up in proxy and server logs."""
+        API.required("ApiKey", ApiKey)
+        own_connection = conn is None
+        if own_connection:
+            conn = API.Connect(TATUM_HOST)
+        try:
+            return API.Format("web3_clientVersion", [], conn, form, id=2, content="/v3/xdc/web3/%s" % _path(ApiKey))
+        finally:
+            if own_connection:
+                conn.close()
+
+    def Current_Block_Number(API_Key, form="JSON", conn=None):
+        return _request("GET", "/v3/xdc/block/current", API_Key, conn=conn)
+
+    def XDC_Block_by_Hash(API_KEY, Hash, form="JSON", conn=None):
+        return _request("GET", "/v3/xdc/block/%s" % _path(Hash), API_KEY, conn=conn)
+
+    def XDC_Account_Balance(API_KEY, Address, form="JSON", conn=None):
+        text = _request("GET", "/v3/xdc/account/balance/%s" % _path(Address), API_KEY, conn=conn)
+        return text if form == "JSON" else _field(text, "balance")
+
+    def XDC_Transaction(API_KEY, Hash, form="JSON", conn=None):
+        text = _request("GET", "/v3/xdc/transaction/%s" % _path(Hash), API_KEY, conn=conn)
         if form == "JSON":
-            return data.decode("utf-8")
-        else:
-            DATA = data.decode("utf-8")
-            Item = json.loads(DATA)
-            
-            xpub = Item["xpub"]
-            mnemonic =Item["mnemonic"]
+            return text
+        names = ["blockHash", "blockNumber", "from", "gas", "gasPrice", "input", "nonce", "to",
+                 "transactionIndex", "value", "contractAddress", "cumulativeGasUsed", "gasUsed", "logs"]
+        return [_field(text, name) for name in names]
 
-            return xpub
+    def Count_Outgoing_XDC_Transactions(API_KEY, Address, form="JSON", conn=None):
+        return _request("GET", "/v3/xdc/transaction/count/%s" % _path(Address), API_KEY, conn=conn)
 
-############ TEST ############
-    def Generate_XDC_Wallet_EPK(API_KEY,xpub,index,form="JSON"):
-        headers = { 'x-api-key': API_KEY }
-        conn.request("GET", "/v3/xdc/address/%s/%s" % (xpub,index), headers=headers)
-        res = conn.getresponse()
-        data = res.read()
+    def Send_XDC_ERC20(API_KEY, To, Amount, FromPrivateKey, Data=None, Nonce=None, Fee=None, form="JSON", conn=None):
+        """Sends real funds, and hands FromPrivateKey to Tatum. Only use it with a throwaway test key."""
+        payload = {
+            "to": API.required("To", To),
+            "amount": str(API.required("Amount", Amount)),
+            "fromPrivateKey": API.required("FromPrivateKey", FromPrivateKey),
+        }
+        if Data is not None:
+            payload["data"] = Data
+        if Nonce is not None:
+            payload["nonce"] = Nonce
+        if Fee is not None:
+            payload["fee"] = Fee
+        return _request("POST", "/v3/xdc/transaction", API_KEY, payload, conn)
 
-        if form == "JSON":
-            return data.decode("utf-8")
-        else:
-            DATA = data.decode("utf-8")
-            Item = json.loads(DATA)
-            address = Item["address"]
+    def Estimate_XDC_Transaction_Fees(API_KEY, Address1, Address2, Amount, Data=None, form="JSON", conn=None):
+        payload = {
+            "from": API.required("Address1", Address1),
+            "to": API.required("Address2", Address2),
+            "amount": str(API.required("Amount", Amount)),
+        }
+        if Data is not None:
+            payload["data"] = Data
+        return _request("POST", "/v3/xdc/gas", API_KEY, payload, conn)
 
-            return address
+    def Execute_Smart_Contract(API_KEY, contractAddress, methodName, methodABI, params, FromPrivateKey=None, Fee=None, form="JSON", conn=None):
+        """A call that changes state needs FromPrivateKey, which goes to Tatum. Only use a throwaway test key."""
+        payload = {
+            "contractAddress": API.required("contractAddress", contractAddress),
+            "methodName": API.required("methodName", methodName),
+            "methodABI": API.required("methodABI", methodABI),
+            "params": params,
+        }
+        if FromPrivateKey is not None:
+            payload["fromPrivateKey"] = FromPrivateKey
+        if Fee is not None:
+            payload["fee"] = Fee
+        return _request("POST", "/v3/xdc/smartcontract", API_KEY, payload, conn)
 
-    def Generate_XDC_Private_key(API_KEY,Seed,form="JSON"):
-        payload = "{\"index\":0,\"mnemonic\":\"%s\"}" % Seed
-        headers = {
-            'content-type': "application/json",
-            'x-api-key': API_KEY
-            }
-
-        conn.request("POST", "/v3/xdc/wallet/priv", payload, headers)
-        res = conn.getresponse()
-        data = res.read()
-
-        if form == "JSON":
-            return data.decode("utf-8")
-        else:
-            DATA = data.decode("utf-8")
-            Item = json.loads(DATA)
-            key = Item["key"] 
-
-            return key
-
-    def Web3_HTTP_Driver(ApiKey,form="JSON"):
-        Call = "POST"
-        Content = "/v3/xdc/web3/%s" % ApiKey
-        Payload = "{\"jsonrpc\":\"2.0\",\"method\":\"web3_clientVersion\",\"params\":[],\"id\":2}"
-
-        return API.Format(Call,Payload,Content,conn,form)
-
-    def Current_Block_Number(API_Key,form="JSON"):
-        conn = http.client.HTTPSConnection("api-eu1.tatum.io")
-        headers = { 'x-api-key': API_Key }
-        conn.request("GET", "/v3/xdc/block/current", headers=headers)
-        res = conn.getresponse()
-        data = res.read()
-
-        return (data.decode("utf-8"))
-
-####### TEST #######
-    def XDC_Block_by_Hash(API_KEY,Hash,form="JSON"):
-        conn = http.client.HTTPSConnection("api-eu1.tatum.io")
-        headers = { 'x-api-key': API_KEY }
-        conn.request("GET", "/v3/xdc/block/%s" % Hash, headers=headers)
-        res = conn.getresponse()
-        data = res.read()
-
-        return (data.decode("utf-8"))
-
-    def XDC_Account_Balance(API_KEY,Address,form="JSON"):
-        conn = http.client.HTTPSConnection("api-eu1.tatum.io")
-        headers = { 'x-api-key': API_KEY }
-        conn.request("GET", "/v3/xdc/account/balance/%s" % Address, headers=headers)
-        res = conn.getresponse()
-        data = res.read()
-
-        if form == "Text":
-            Item = json.loads(data.decode("utf-8"))
-            balance = Item["balance"]
-            return balance
-        else:
-            return (data.decode("utf-8"))
-
-    def  XDC_Transaction(API_KEY,Hash,form="JSON"):
-        conn = http.client.HTTPSConnection("api-eu1.tatum.io")
-        headers = { 'x-api-key': API_KEY }
-        conn.request("GET", "/v3/xdc/transaction/%s" % Hash, headers=headers)
-        res = conn.getresponse()
-        data = res.read()
-
-        if form == "Text":
-            Item = json.loads(data.decode("utf-8")) 
-            blockHash = Item["blockHash"]   
-            blockNumber = Item["blockNumber"]  
-            From = Item["from"]  
-            gas = Item["gas"]  
-            gasPrice = Item["gasPrice"]  
-            input = Item["input"]  
-            nonce = Item["nonce"]  
-            To = Item["to"]  
-            transactionIndex = Item["transactionIndex"]  
-            value = Item["value"]  
-            contractAddress = Item["contractAddress"]  
-            cumulativeGasUsed = Item["cumulativeGasUsed"]  
-            gasUsed = Item["gasUsed"]  
-            logs = Item["logs"]  
-
-            return [blockHash,blockNumber,From,gas,gasPrice,input,nonce,To,transactionIndex,value,contractAddress,cumulativeGasUsed,gasUsed,logs]
-        else:
-            return (data.decode("utf-8"))
-
-    def Count_Outgoing_XDC_Transactions(API_KEY,Address,form="JSON"):
-        conn = http.client.HTTPSConnection("api-eu1.tatum.io")
-        headers = { 'x-api-key': API_KEY }
-        conn.request("GET", "/v3/xdc/transaction/count/%s" % Address, headers=headers)
-        res = conn.getresponse()
-        data = res.read()
-
-        return data.decode("utf-8")
-
-####### TEST #######
-    def Send_XDC_ERC20(API_KEY,form="JSON"):
-        conn = http.client.HTTPSConnection("api-eu1.tatum.io")
-        payload = "{\"data\":\"My note to recipient.\",\"nonce\":0,\"to\":\"xdc687422eEA2cB73B5d3e242bA5456b782919AFc85\",\"fee\":{\"gasLimit\":\"40000\",\"gasPrice\":\"20\"},\"amount\":\"100000\",\"fromPrivateKey\":\"0x05e150c73f1920ec14caa1e0b6aa09940899678051a78542840c2668ce5080c2\"}"
-        headers = {
-            'content-type': "application/json",
-            'x-api-key': API_KEY
-            }
-        conn.request("POST", "/v3/xdc/transaction", payload, headers)
-        res = conn.getresponse()
-        data = res.read()
-
-        return data.decode("utf-8")
-
-####### TEST #######
-    def Estimate_XDC_Transaction_Fees(API_KEY,Address1,Address2,form="JSON"):
-        conn = http.client.HTTPSConnection("api-eu1.tatum.io")
-        payload = "{\"from\":\"xdcfb99f8ae9b70a0c8cd96ae665bbaf85a7e01a2ef\",\"to\":\"xdc687422eEA2cB73B5d3e242bA5456b782919AFc85\",\"amount\":\"100000\",\"data\":\"My note to recipient.\"}"
-        headers = {
-            'content-type': "application/json",
-            'x-api-key': API_KEY
-            }
-        conn.request("POST", "/v3/xdc/gas", payload, headers)
-        res = conn.getresponse()
-        data = res.read()
-
-        return data.decode("utf-8")
-
-####### TEST #######
-    def Execute_Smart_Contract(API_KEY,contractAddress,form="JSON"):
-        conn = http.client.HTTPSConnection("api-eu1.tatum.io")
-        payload = "{\"contractAddress\":\"xdc687422eEA2cB73B5d3e242bA5456b782919AFc85\",\"methodName\":\"transfer\",\"methodABI\":{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"stake\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},\"params\":[\"0x632\"]}"
-        headers = {
-            'content-type': "application/json",
-            'x-api-key': API_KEY
-            }
-
-        conn.request("POST", "/v3/xdc/smartcontract", payload, headers)
-        res = conn.getresponse()
-        data = res.read()
-
-        return (data.decode("utf-8"))
-
-####### TEST #######
-    def Broadcast_Signed_XDC_Transaction(API_KEY,txData,signatureId,form="JSON"):
-        conn = http.client.HTTPSConnection("api-eu1.tatum.io")
-        payload = "{\"txData\":\"62BD544D1B9031EFC330A3E855CC3A0D51CA5131455C1AB3BCAC6D243F65460D\",\"signatureId\":\"1f7f7c0c-3906-4aa1-9dfe-4b67c43918f6\"}"
-        headers = {
-            'content-type': "application/json",
-            'x-api-key': API_KEY
-            }
-
-        conn.request("POST", "/v3/xdc/broadcast", payload, headers)
-        res = conn.getresponse()
-        data = res.read()
-
-        return (data.decode("utf-8"))
+    def Broadcast_Signed_XDC_Transaction(API_KEY, txData, signatureId=None, form="JSON", conn=None):
+        payload = {"txData": API.required("txData", txData)}
+        if signatureId is not None:
+            payload["signatureId"] = signatureId
+        return _request("POST", "/v3/xdc/broadcast", API_KEY, payload, conn)

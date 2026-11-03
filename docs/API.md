@@ -1,234 +1,91 @@
-# **XDC Python SDK V1.0**
-
-### **Summary:**
-
-This is a Python SDK for the XDC (XinFin) JSON-RPC API.
-
-##### **Haxidecimal Outputs**
-
-All hexadecimal need to be converted into **integers**
-
-##### **JSON Schema**
-
-- By default all functions output in JSON so i implemeted a simplified output for variable just place class(form = "Text")  for vatiabble output as string | Default output "JSON"
-
-- The JSON Schema outputed by all the functions is this:
-
-```json
-{
-  "jsonrpc":"2.0",
-  "id":1,
-  "result":EXAMPLE_RESULT
-}
-```
-
-------
-
-
-
-## **web3**
-
-#### **POST /clientVersion**
-
-```python
-Version = web3_Request.clientVersion()
-print(Version)
-##Output {"jsonrpc":"2.0","id":67,"result":"50"}
-```
-
-Returns the current client version.
-
-**Parameters**
-
-**form** =  "Text"  for varriabled output as string | Default output "JSON"
-
-**Returns**
-
-`String` - The current client version
-
-#### **POST /sha3**
-
-```python
-import hashlib 
-String= "Q"
-Hash =  hashlib.sha256(String.encode('utf-8')).hexdigest()
-
-print(web3_Request.sha3(Hash=Hash,form="Text"))
-##Output 0x6d1223fcb20bababbf18827dbe3ac76b13f03e2.........
-```
-
-Returns Keccak-256 (not the standardized SHA3-256) of the given data.
-
-**Parameters**
-
-​	**form** =  "Text"  for vatiabble output as string | Default output JSON
-
-​	**Hash** - the Hash to convert into a SHA3 hash 
-
-**Returns**`DATA` - The SHA3 result of the given string.
-
-## **net**
-
-#### **POST /version**
-
-```python
-Version = net_Request.version(form="Text")
-print(Version)
-##Output 50
-```
-
-Returns the current network id.
-
-**Parameters**
-
-none
-
-**Returns**
-
-- `String` - The current network id.
-    - `"50"`: XinFin Mainnet
-    - `"51"`: Apothem Testnet
-
-#### **POST /listening**
-
-```python
-Listening = net_Request.listening(form="Text")
-print(Listening)
-##Output True
-```
-
-Returns `true` if client is actively listening for network connections.
-
-**Parameters**
-
-none
-
-**Returns**
-
-- `Boolean` - `true` when listening, otherwise `false`.
-
-
-
-#### **POST /peerCount**
-
-```python
-Peer = net_Request.peerCount(form="Text")
-print(Peer)
-##Output 0x8
-```
-
-Returns number of peers currently connected to the client.
-
-**Parameters**
-
-none
-
-**Returns**
-
-- `QUANTITY` - integer of the number of connected peers.
-
-
-
-## **eth**
-
-#### **POST /protocolVersion**
-
-```python
-ETH_Version = eth_Request.protocolVersion(form="Text")
-print(int(ETH_Version,16)
-##Output 63
-```
-
-Returns the current ethereum protocol version.
-
-**Parameters**
-
-none
-
-**Returns**
-
-- `String` - The current ethereum protocol version
-
-
-
-#### **POST /syncing**
-
-```python
-Sync = eth_Request.syncing(form="Text")
-print(Sync)
-##Output False
-```
-
-Returns an object with data about the sync status or false.
-
-**Parameters**
-
-none
-
-**Returns**
-
-- `Object|Boolean`, An object with sync status data or FALSE, when not syncing:
-    - `startingBlock`: `QUANTITY` - The block at which the import started (will only be reset, after the sync reached his head)
-    - `currentBlock`: `QUANTITY` - The current block, same as eth_blockNumber
-    - `highestBlock`: `QUANTITY` - The estimated highest block
-
-
-
-#### **POST /coinbase**
-
-```python
-coinbase = eth_Request.coinbase(form="Text")
-print(coinbase)
-##Output xdc3056a8bff9a17b12d08f1837d0b44cf1e2018fbe
-```
-
-Returns the client coinbase address. **Parameters** none **Returns**
-
-- `DATA`, 20 bytes - the current coinbase address.
-
-
-
-#### **POST /gasPrice**
-
-```python
-gasPrice = eth_Request.gasPrice(form="Text")
-print(gasPrice)
-##Output 0x9c4
-```
-
-Returns the current price per gas in wei. **Parameters** none **Returns**
-
-- `QUANTITY` - integer of the current gas price in wei.
-
-
-
-#### **POST /accounts**
-
-```
-POST /accounts
-```
-
-Returns a list of addresses owned by client.
-
-**Parameters**
-
-none
-
-**Returns**
-
-- `Array of DATA`, 20 Bytes - addresses owned by the client
-
-
-
-#### **POST /blockNumber**
-
-```
-POST /blockNumber
-```
-
-Returns the number of most recent block. **Parameters** none **Returns**
-
-- `QUANTITY` - integer of the current block number the client is on.
-
-
-
+# API reference
+
+Every method also takes `form` and `conn`.
+
+| Argument | Default | Meaning |
+| --- | --- | --- |
+| `form` | `"JSON"` | `"JSON"` returns the raw response text. `"Text"` returns the value of the result |
+| `conn` | `None` | An open `http.client` connection to reuse. By default each call opens and closes its own |
+
+RPC calls go to `rpc.xinfin.network`, and Tatum calls go to `api-eu1.tatum.io`.
+
+Block numbers, positions and indexes can be integers, which are converted to hex, or strings such as `"latest"`. Inputs with no default are required, and a missing one raises `ValueError` before anything is sent.
+
+## Errors
+
+| Exception | When |
+| --- | --- |
+| `ValueError` | A required input is missing |
+| `RPCError` | The node refused the call. It has `code` and `message`. With `form="Text"` only, since `"JSON"` returns the response as it came |
+| `APIError` | The connection failed, the server returned an HTTP error, or the reply could not be read |
+
+## web3
+
+| Call | Returns |
+| --- | --- |
+| `web3_Request.clientVersion()` | Node software version |
+| `web3_Request.sha3(Hash=data)` | Keccak-256 of hex data. `0x` is added if it is missing |
+
+## net
+
+| Call | Returns |
+| --- | --- |
+| `net_Request.version()` | Network ID |
+| `net_Request.listening()` | Whether the node accepts connections |
+| `net_Request.peerCount()` | Number of peers, as hex |
+
+## eth
+
+Inputs are keyword arguments, for example `eth_Request.getBalance(Address="0x...")`. Each one sends the JSON-RPC method `eth_<name>`. `Transaction` is a dictionary such as `{"from": ..., "to": ..., "value": "0x1"}`.
+
+| Method | Inputs | Returns |
+| --- | --- | --- |
+| `protocolVersion` |  | Protocol version |
+| `syncing` |  | Sync state, or false |
+| `coinbase` |  | Node's coinbase address |
+| `gasPrice` |  | Gas price in wei, as hex |
+| `accounts` |  | Accounts the node holds |
+| `blockNumber` |  | Latest block number, as hex |
+| `getBalance` | `Address, Block="latest"` | Balance in wei, as hex |
+| `getStorageAt` | `Address, Position, Block="latest"` | A storage slot |
+| `getTransactionCount` | `Address, Block="latest"` | Nonce of an address |
+| `getBlockTransactionCountByHash` | `Hash` | Transactions in a block |
+| `getBlockTransactionCountByNumber` | `Block` | Transactions in a block |
+| `getCode` | `Address, Block="latest"` | Contract bytecode |
+| `sign` | `Address, Data` | Signs with an account the node holds |
+| `sendTransaction` | `Transaction` | Sends with an account the node holds |
+| `sendRawTransaction` | `Data` | Sends a transaction you signed |
+| `call` | `Transaction, Block="latest"` | Read-only contract call |
+| `estimateGas` | `Transaction` | Gas estimate |
+| `getBlockByHash` | `Hash, Full=True` | A block. `Full` includes whole transactions |
+| `getBlockByNumber` | `Block="latest", Full=True` | A block |
+| `getBlockSignersByNumber` | `Block` | XDPoS block signers |
+| `getBlockSignersByHash` | `Hash` | XDPoS block signers |
+| `getBlockFinalityByNumber` | `Block` | XDPoS finality |
+| `getBlockFinalityByHash` | `Hash` | XDPoS finality |
+| `getCandidates` | `Epoch="latest"` | XDPoS masternode candidates |
+| `getCandidateStatus` | `Candidate, Epoch="latest"` | XDPoS candidate status |
+| `getTransactionByHash` | `Hash` | A transaction |
+| `getTransactionByBlockHashAndIndex` | `Hash, Index=0` | A transaction by position |
+| `getTransactionByBlockNumberAndIndex` | `Block, Index=0` | A transaction by position |
+| `getTransactionReceipt` | `Hash` | A receipt, or null while pending |
+
+## tatum
+
+Arguments can be positional. API keys go in the `x-api-key` header, except for `Web3_HTTP_Driver`. Values placed in a URL are encoded, so they can't change the path.
+
+| Method | Arguments | Request | `form="Text"` returns | Note |
+| --- | --- | --- | --- | --- |
+| `Generate_XDC_Wallet` | `Seed, API_KEY` | `GET /v3/xdc/wallet` | `xpub` | Sends your seed to Tatum |
+| `Generate_XDC_Wallet_EPK` | `API_KEY, xpub, index` | `GET /v3/xdc/address/{xpub}/{index}` | `address` |  |
+| `Generate_XDC_Private_key` | `API_KEY, Seed, index=0` | `POST /v3/xdc/wallet/priv` | `key` | Sends your seed to Tatum |
+| `Web3_HTTP_Driver` | `ApiKey` | `POST /v3/xdc/web3/{key}` |  | Puts the key in the URL |
+| `Current_Block_Number` | `API_Key` | `GET /v3/xdc/block/current` |  |  |
+| `XDC_Block_by_Hash` | `API_KEY, Hash` | `GET /v3/xdc/block/{hash}` |  |  |
+| `XDC_Account_Balance` | `API_KEY, Address` | `GET /v3/xdc/account/balance/{address}` | `balance` |  |
+| `XDC_Transaction` | `API_KEY, Hash` | `GET /v3/xdc/transaction/{hash}` | List of fields |  |
+| `Count_Outgoing_XDC_Transactions` | `API_KEY, Address` | `GET /v3/xdc/transaction/count/{address}` |  |  |
+| `Send_XDC_ERC20` | `API_KEY, To, Amount, FromPrivateKey, Data=None, Nonce=None, Fee=None` | `POST /v3/xdc/transaction` |  | Sends your private key to Tatum |
+| `Estimate_XDC_Transaction_Fees` | `API_KEY, Address1, Address2, Amount, Data=None` | `POST /v3/xdc/gas` |  |  |
+| `Execute_Smart_Contract` | `API_KEY, contractAddress, methodName, methodABI, params, FromPrivateKey=None, Fee=None` | `POST /v3/xdc/smartcontract` |  | Can send your private key to Tatum |
+| `Broadcast_Signed_XDC_Transaction` | `API_KEY, txData, signatureId=None` | `POST /v3/xdc/broadcast` |  |  |
